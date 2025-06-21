@@ -1,0 +1,12 @@
+[Unit]
+Description=Face Recognition Service
+After=network.target
+
+[Service]
+User=${REMOTE_USER}
+WorkingDirectory=${REMOTE_DIR}
+ExecStart=/usr/bin/python3 ${REMOTE_DIR}/recognition.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
