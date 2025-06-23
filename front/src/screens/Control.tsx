@@ -44,8 +44,8 @@ export function ControlScreen() {
 
   return (
     <>
-      <h1 className="ml-5 mt-5 font-semibold">CONTROL</h1>
-      <div className="flex flex-col w-full px-10 mt-5 gap-6">
+      <h1 className="ml-5 mt-5 font-semibold flex flex-col">CONTROL</h1>
+      <div className="flex flex-col w-full px-10 mt-30 gap-20">
         <StyledButton
           text={loading ? "PROCESSING..." : "OPEN"}
           onClick={handleOpen}
@@ -59,12 +59,16 @@ export function ControlScreen() {
           hover="hover:bg-[#d6570d]"
         />
         {message && (
-          <div 
-            className={`text-center mt-4 ${
-              message.includes('Successfully') ? 'text-green-600' : 'text-red-500'
-            }`}
-          >
-            {message}
+          <div className="flex justify-center mt-4">
+            <div
+              className={`text-lg font-semibold transition-transform transform duration-500 ease-in-out ${
+                message.includes("Successfully")
+                  ? "text-green-600 scale-110"
+                  : "text-red-500 scale-90"
+              }`}
+            >
+              {message}
+            </div>
           </div>
         )}
       </div>

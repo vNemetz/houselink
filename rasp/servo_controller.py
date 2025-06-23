@@ -8,45 +8,41 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# GPIO setup for servo
-SERVO_PIN = 17  # GPIO17 (Physical Pin 11)
+# GPIO setup for DC motor with L298N
+PWM_PIN = 18  # GPIO18 (Physical Pin 12)
+IN1_PIN = 23  # GPIO23 (Physical Pin 16)
+IN2_PIN = 24  # GPIO24 (Physical Pin 18)
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(SERVO_PIN, GPIO.OUT)
+GPIO.setup(PWM_PIN, GPIO.OUT)
+GPIO.setup(IN1_PIN, GPIO.OUT)
+GPIO.setup(IN2_PIN, GPIO.OUT)
 
-# Create PWM instance with 50Hz frequency (standard for servos)
-pwm = None  # Initialize as None, we'll create it only when needed
+# Create PWM instance for speed control
+pwm = GPIO.PWM(PWM_PIN, 100)  # 100Hz frequency
+pwm.start(0)  # Start with 0% duty cycle
 
 # Current state tracking
 current_state = "locked"
 
-def init_pwm():
-    """Initialize PWM if not already initialized"""
-    global pwm
-    if pwm is None:
-        pwm = GPIO.PWM(SERVO_PIN, 50)
-        pwm.start(0)
-
-def cleanup_pwm():
-    """Stop PWM and cleanup"""
-    global pwm
-    if pwm is not None:
-        pwm.stop()
-        pwm = None
-
-def set_angle(angle):
-    """Convert angle to duty cycle and move servo"""
+def set_motor(direction: str, speed: int):
+    """Control motor direction and speed"""
     try:
-        init_pwm()  # Start PWM
-        duty = angle / 18 + 2  # Convert angle to duty cycle (0-180 degrees -> 2-12% duty cycle)
-        logger.info(f"Setting servo to angle {angle}° (duty cycle: {duty}%)")
-        pwm.ChangeDutyCycle(duty)
-        time.sleep(0.5)  # Give servo time to reach position
-        cleanup_pwm()  # Stop PWM after movement
+        if direction == "forward":
+            GPIO.output(IN1_PIN, GPIO.HIGH)
+            GPIO.output(IN2_PIN, GPIO.LOW)
+        elif direction == "backward":
+            GPIO.output(IN1_PIN, GPIO.LOW)
+            GPIO.output(IN2_PIN, GPIO.HIGH)
+        else:
+            GPIO.output(IN1_PIN, GPIO.LOW)
+            GPIO.output(IN2_PIN, GPIO.LOW)
+
+        pwm.ChangeDutyCycle(speed)
+        logger.info(f"Motor set to {direction} with speed {speed}%")
         return True
     except Exception as e:
-        logger.error(f"Error setting servo angle: {e}")
-        cleanup_pwm()  # Ensure PWM is cleaned up even on error
+        logger.error(f"Error controlling motor: {e}")
         return False
 
 app = Flask(__name__)
@@ -66,50 +62,60 @@ def control_lock():
         if command not in ['lock', 'unlock']:
             return jsonify({'error': 'Invalid command'}), 400
             
-        # For unlock command, move servo to 90 degrees
+        # For unlock command, move motor forward
         if command == 'unlock' and current_state == 'locked':
-            if set_angle(90):  # Move to unlocked position
+            if set_motor("forward", 100):  # Full speed forward
+                time.sleep(2)  # Run motor for 2 seconds
+                set_motor("stop", 0)  # Stop motor
                 current_state = 'unlocked'
                 logger.info("Successfully unlocked")
                 return jsonify({'status': 'Success', 'action': 'unlocked'})
             else:
-                logger.error("Failed to move servo")
-                return jsonify({'error': 'Failed to move servo'}), 500
+                logger.error("Failed to control motor")
+                return jsonify({'error': 'Failed to control motor'}), 500
                 
-        # For lock command, move servo to 0 degrees
+        # For lock command, move motor backward
         elif command == 'lock' and current_state == 'unlocked':
-            if set_angle(0):  # Move to locked position
+            if set_motor("backward", 100):  # Full speed backward
+                time.sleep(2)  # Run motor for 2 seconds
+                set_motor("stop", 0)  # Stop motor
                 current_state = 'locked'
                 logger.info("Successfully locked")
                 return jsonify({'status': 'Success', 'action': 'locked'})
             else:
-                logger.error("Failed to move servo")
-                return jsonify({'error': 'Failed to move servo'}), 500
+                logger.error("Failed to control motor")
+                return jsonify({'error': 'Failed to control motor'}), 500
         
         logger.info(f"No action needed, current state: {current_state}")
         return jsonify({'status': 'No action needed', 'current_state': current_state})
             
     except Exception as e:
         logger.error(f"Error: {e}")
-        cleanup_pwm()  # Ensure PWM is cleaned up on error
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/state', methods=['GET'])
+def get_motor_state():
+    """Endpoint to retrieve the current state of the motor."""
+    try:
+        logger.info(f"Current motor state: {current_state}")
+        return jsonify({'current_state': current_state})
+    except Exception as e:
+        logger.error(f"Error retrieving motor state: {e}")
         return jsonify({'error': str(e)}), 500
 
 def cleanup():
     """Clean up GPIO on program exit"""
     try:
-        cleanup_pwm()
+        pwm.stop()
         GPIO.cleanup()
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
 
 if __name__ == '__main__':
     try:
-        logger.info("Starting servo controller...")
-        # Initialize to locked position
-        if set_angle(0):
-            logger.info("Initialized to locked position")
-        else:
-            logger.error("Failed to initialize servo position")
+        logger.info("Starting DC motor controller...")
+        # Initialize motor to stopped state
+        set_motor("stop", 0)
         
         # Run Flask app on port 5001
         logger.info("Starting Flask server on port 5001...")

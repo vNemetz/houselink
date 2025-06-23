@@ -15,32 +15,32 @@ export function LoginScreen() {
       setMessage(null);
       setLoading(true);
 
-      console.log('Attempting login with:', { email });
+      console.log("Attempting login with:", { email });
 
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          username: email, 
-          password 
+        body: JSON.stringify({
+          username: email,
+          password,
         }),
       });
 
       const data = await response.json();
-      console.log('Login response:', data);
+      console.log("Login response:", data);
 
       if (response.ok) {
-        setMessage('Login successful!');
+        setMessage("Login successful!");
         // Navigate to control page after successful login
-        navigate('/control');
+        navigate("/control");
       } else {
-        setMessage(data.message || 'Login failed');
+        setMessage(data.message || "Login failed");
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setMessage('Network error. Please try again.');
+      console.error("Login error:", err);
+      setMessage("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ export function LoginScreen() {
     <>
       <h1 className="ml-5 mt-5 font-semibold">LOGIN</h1>
       <div className="flex flex-col w-full px-10 mt-5 gap-3">
-        <h2 className="mt-15">Email:</h2>
+        <h2 className="mt-10">Email:</h2>
         <StyledInput
           text="Email"
           size="lg"
@@ -65,7 +65,7 @@ export function LoginScreen() {
           size="lg"
           placeholder="Enter your password"
           type="password"
-          margin="mb-25"
+          margin="mb-10"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -75,20 +75,28 @@ export function LoginScreen() {
           size="2xl"
           hover="hover:bg-[#d6570d]"
         />
-        {message && (
-          <div className={`text-sm mt-2 ${message.includes('successful') ? 'text-green-600' : 'text-red-500'}`}>
-            {message}
-          </div>
-        )}
         <p className="text-sm text-center mt-2">
           Don't have an account?{" "}
-          <span 
+          <span
             className="text-[#ff782a] cursor-pointer hover:text-[#d6570d]"
-            onClick={() => navigate('/register')}
+            onClick={() => navigate("/register")}
           >
             Register here
           </span>
         </p>
+        {message && (
+          <div className="flex justify-center mt-[-5px]">
+            <div
+              className={`text-sm mt-2 ${
+                message.includes("successful")
+                  ? "text-green-600"
+                  : "text-red-500"
+              }`}
+            >
+              {message}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

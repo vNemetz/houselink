@@ -57,7 +57,7 @@ export function RegisterScreen() {
         <h2>Serial Number:</h2>
         <StyledInput
           text="Serial Number"
-          size="lg"
+          size="md"
           placeholder="Ex: 124AB3C4"
           margin="mb-3"
           value={serial}
@@ -66,7 +66,7 @@ export function RegisterScreen() {
         <h2>Email:</h2>
         <StyledInput
           text="Email"
-          size="lg"
+          size="md"
           placeholder="Enter your email (registered when you bought the device)"
           margin="mb-3"
           value={email}
@@ -75,7 +75,7 @@ export function RegisterScreen() {
         <h2>New Password:</h2>
         <StyledInput
           text="Password"
-          size="lg"
+          size="md"
           placeholder="Enter your password"
           type="password"
           margin="mb-3"
@@ -85,7 +85,7 @@ export function RegisterScreen() {
         <h2>Confirm Password:</h2>
         <StyledInput
           text="Confirm Password"
-          size="lg"
+          size="md"
           placeholder="Confirm your password (retype it)"
           type="password"
           margin="mb-6"
@@ -99,14 +99,16 @@ export function RegisterScreen() {
           hover="hover:bg-[#d6570d]"
         />
         {message && (
-          <div
-            className={`text-sm mt-2 ${
-              message.includes("successful")
-                ? "text-green-600"
-                : "text-red-500"
-            }`}
-          >
-            {message}
+          <div className="flex justify-center mt-[-5px]">
+            <div
+              className={`text-sm ${
+                message.includes("successful")
+                  ? "text-green-600"
+                  : "text-red-500"
+              }`}
+            >
+              {message}
+            </div>
           </div>
         )}
       </div>
