@@ -65,7 +65,7 @@ def control_lock():
         # For unlock command, move motor forward
         if command == 'unlock' and current_state == 'locked':
             if set_motor("forward", 100):  # Full speed forward
-                time.sleep(2)  # Run motor for 2 seconds
+                time.sleep(3)  # Run motor for 2 seconds
                 set_motor("stop", 0)  # Stop motor
                 current_state = 'unlocked'
                 logger.info("Successfully unlocked")
@@ -77,7 +77,7 @@ def control_lock():
         # For lock command, move motor backward
         elif command == 'lock' and current_state == 'unlocked':
             if set_motor("backward", 100):  # Full speed backward
-                time.sleep(2)  # Run motor for 2 seconds
+                time.sleep(3)  # Run motor for 2 seconds
                 set_motor("stop", 0)  # Stop motor
                 current_state = 'locked'
                 logger.info("Successfully locked")

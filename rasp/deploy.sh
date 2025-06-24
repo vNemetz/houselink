@@ -3,9 +3,9 @@
 echo "Deploying files to Raspberry Pi..."
 
 # Copy files to Raspberry Pi
-scp servo_controller.py rasp@192.168.198.84:/home/rasp/servo/
-scp requirements.txt rasp@192.168.198.84:/home/rasp/servo/
-scp servo-controller.service rasp@192.168.198.84:/home/rasp/servo/
+scp /home/vnemetz/Documentos/site/rasp/servo_controller.py rasp@192.168.198.84:/home/rasp/servo/
+scp /home/vnemetz/Documentos/site/rasp/requirements.txt rasp@192.168.198.84:/home/rasp/servo/
+scp /home/vnemetz/Documentos/site/rasp/servo-controller.service rasp@192.168.198.84:/home/rasp/servo/
 
 # SSH into Raspberry Pi and update the service
 ssh rasp@192.168.198.84 << 'EOF'
