@@ -4,7 +4,7 @@ import { StyledButton } from "../components/StyledButton";
 export function ControlScreen() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const RASPBERRY_PI_URL = 'http://192.168.198.84:5001/control';
+  const RASPBERRY_PI_URL = 'http://192.168.18.87:5001/control';
 
   const sendCommand = async (command: 'lock' | 'unlock') => {
     try {

@@ -22,7 +22,7 @@ export function RegisterScreen() {
       setLoading(true);
       console.log("Attempting registration with:", { email });
 
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch("http://localhost:5173/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -17,7 +17,7 @@ export function LoginScreen() {
 
       console.log('Attempting login with:', { email });
 
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://localhost:5173/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

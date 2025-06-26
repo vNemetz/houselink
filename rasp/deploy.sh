@@ -3,12 +3,12 @@
 echo "Deploying files to Raspberry Pi..."
 
 # Copy files to Raspberry Pi
-scp servo_controller.py rasp@192.168.198.84:/home/rasp/servo/
-scp requirements.txt rasp@192.168.198.84:/home/rasp/servo/
-scp servo-controller.service rasp@192.168.198.84:/home/rasp/servo/
+scp servo_controller.py rasp@192.168.18.85:/home/rasp/servo/
+scp requirements.txt rasp@192.168.18.87:/home/rasp/servo/
+scp servo-controller.service rasp@192.168.18.87:/home/rasp/servo/
 
 # SSH into Raspberry Pi and update the service
-ssh rasp@192.168.198.84 << 'EOF'
+ssh rasp@192.168.18.87 << 'EOF'
     echo "Installing dependencies..."
     cd /home/rasp/servo
     source venv/bin/activate
