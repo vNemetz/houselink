@@ -31,7 +31,7 @@ function App() {
       <div className="App h-screen flex flex-col bg-gradient-to-br from-[#ff782a] to-[#ffd6a7]">
         <NavBar />
         <div className="flex-1 flex justify-center overflow-hidden w-full">
-          <div className="w-[40%] max-h-[75%] bg-[#fffedf] mt-20 text-3xl rounded-4xl">
+          <div className="w-[40%] max-h-[80%] bg-[#fffedf] mt-20 text-3xl rounded-4xl">
             <Routes>
               <Route path="/" element={<RegisterScreen />} />
               <Route path="/register" element={<RegisterScreen />} />

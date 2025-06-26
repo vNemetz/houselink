@@ -25,8 +25,10 @@ pwm.start(0)  # Start with 0% duty cycle
 # Current state tracking
 current_state = "locked"
 
-def set_motor(direction: str, speed: int):
-    """Control motor direction and speed"""
+# Ensure the motor is always running at 100% power
+
+def set_motor(direction: str, speed: int = 100):
+    """Control motor direction and ensure full power"""
     try:
         if direction == "forward":
             GPIO.output(IN1_PIN, GPIO.HIGH)
@@ -38,8 +40,8 @@ def set_motor(direction: str, speed: int):
             GPIO.output(IN1_PIN, GPIO.LOW)
             GPIO.output(IN2_PIN, GPIO.LOW)
 
-        pwm.ChangeDutyCycle(speed)
-        logger.info(f"Motor set to {direction} with speed {speed}%")
+        pwm.ChangeDutyCycle(100)  # Always set to 100% duty cycle
+        logger.info(f"Motor set to {direction} with full power (100%)")
         return True
     except Exception as e:
         logger.error(f"Error controlling motor: {e}")
