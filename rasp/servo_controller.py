@@ -11,12 +11,17 @@ logger = logging.getLogger(__name__)
 # GPIO setup for DC motor with L298N
 PWM_PIN = 18  # GPIO18 (Physical Pin 12)
 IN1_PIN = 23  # GPIO23 (Physical Pin 16)
-IN2_PIN = 24  # GPIO24 (Physical Pin 18)
+IN2_PIN = 24  # GPIO24 (Physical Pin 18)    
+REED_PIN = 17  # GPIO17 for reed switch
+REED_PIN_2 = 27  # GPIO27 for second reed switch
+
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(PWM_PIN, GPIO.OUT)
 GPIO.setup(IN1_PIN, GPIO.OUT)
 GPIO.setup(IN2_PIN, GPIO.OUT)
+GPIO.setup(REED_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Setup reed switch with pull-up resistor
+GPIO.setup(REED_PIN_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Setup second reed switch
 
 # Create PWM instance for speed control
 pwm = GPIO.PWM(PWM_PIN, 100)  # 100Hz frequency
@@ -25,16 +30,25 @@ pwm.start(0)  # Start with 0% duty cycle
 # Current state tracking
 current_state = "locked"
 
+def check_reed_switch():
+    """Check if reed switch is closed (magnet is present)"""
+    return GPIO.input(REED_PIN) == 0  # Returns True when circuit is closed
+
+def check_reed_switch_2():
+    """Check if second reed switch is closed (magnet is present)"""
+    return GPIO.input(REED_PIN_2) == 0  # Returns True when circuit is closed
+
 def set_motor(direction: str, speed: int):
     """Control motor direction and speed"""
     try:
+        # Removida a verificação do reed switch aqui
         if direction == "forward":
             GPIO.output(IN1_PIN, GPIO.HIGH)
             GPIO.output(IN2_PIN, GPIO.LOW)
         elif direction == "backward":
             GPIO.output(IN1_PIN, GPIO.LOW)
             GPIO.output(IN2_PIN, GPIO.HIGH)
-        else:
+        else:  # stop
             GPIO.output(IN1_PIN, GPIO.LOW)
             GPIO.output(IN2_PIN, GPIO.LOW)
 
@@ -43,6 +57,42 @@ def set_motor(direction: str, speed: int):
         return True
     except Exception as e:
         logger.error(f"Error controlling motor: {e}")
+        return False
+
+def motor_action(direction: str, duration: int):
+    """Run motor with reed switch monitoring and reverse movement"""
+    try:
+        start_time = time.time()
+        
+        while time.time() - start_time < duration:
+            # Check first reed switch
+            if check_reed_switch():
+                logger.info("Reed switch 1 activated - stopping motor")
+                set_motor("stop", 0)
+                time.sleep(2)
+                
+                reverse_direction = "backward" if direction == "forward" else "forward"
+                logger.info(f"Moving in reverse direction: {reverse_direction}")
+                set_motor(reverse_direction, 100)
+                time.sleep(2)
+                set_motor("stop", 0)
+                break
+            
+            # Check second reed switch only when moving forward
+            if direction == "backward" and check_reed_switch_2():
+                logger.info("Reed switch 2 activated while moving forward - stopping motor")
+                set_motor("stop", 0)
+                break
+            
+            set_motor(direction, 100)
+            time.sleep(0.1)
+        
+        set_motor("stop", 0)
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error in motor_action: {e}")
+        set_motor("stop", 0)
         return False
 
 app = Flask(__name__)
@@ -64,9 +114,7 @@ def control_lock():
             
         # For unlock command, move motor forward
         if command == 'unlock' and current_state == 'locked':
-            if set_motor("forward", 100):  # Full speed forward
-                time.sleep(3)  # Run motor for 2 seconds
-                set_motor("stop", 0)  # Stop motor
+            if motor_action("forward", 3):  # 3 seconds or until reed switch activates
                 current_state = 'unlocked'
                 logger.info("Successfully unlocked")
                 return jsonify({'status': 'Success', 'action': 'unlocked'})
@@ -76,9 +124,7 @@ def control_lock():
                 
         # For lock command, move motor backward
         elif command == 'lock' and current_state == 'unlocked':
-            if set_motor("backward", 100):  # Full speed backward
-                time.sleep(3)  # Run motor for 2 seconds
-                set_motor("stop", 0)  # Stop motor
+            if motor_action("backward", 3):  # 3 seconds or until reed switch activates
                 current_state = 'locked'
                 logger.info("Successfully locked")
                 return jsonify({'status': 'Success', 'action': 'locked'})
