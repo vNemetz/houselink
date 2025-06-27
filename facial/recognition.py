@@ -23,6 +23,13 @@ GPIO.setup(PWM_PIN, GPIO.OUT)
 GPIO.setup(IN1_PIN, GPIO.OUT)
 GPIO.setup(IN2_PIN, GPIO.OUT)
 
+# GPIO setup for reed switches
+REED_PIN = 17  # GPIO17 para reed switch 1
+REED_PIN_2 = 27  # GPIO27 para reed switch 2
+
+GPIO.setup(REED_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(REED_PIN_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 # Create PWM instance for speed control
 pwm = GPIO.PWM(PWM_PIN, 100)  # 100Hz frequency
 pwm.start(0)  # Start with 0% duty cycle
@@ -126,6 +133,47 @@ def set_motor(direction: str, speed: int):
         print(f"Error controlling motor: {e}")
         return False
 
+def check_reed_switch():
+    """Retorna True se o reed switch 1 está ativado (magneto presente)"""
+    return GPIO.input(REED_PIN) == 0
+
+def check_reed_switch_2():
+    """Retorna True se o reed switch 2 está ativado (magneto presente)"""
+    return GPIO.input(REED_PIN_2) == 0
+
+def motor_action(direction: str, duration: int):
+    """
+    Move o motor na direção indicada, para e inverte se reed switch 1 ativar,
+    ou para imediatamente se reed switch 2 ativar enquanto estiver indo para frente.
+    """
+    try:
+        start_time = time.time()
+        while time.time() - start_time < duration:
+            # Se reed switch 1 ativar, para, espera 2s e inverte
+            if check_reed_switch():
+                print("Reed switch 1 ativado - parando motor")
+                set_motor("stop", 0)
+                time.sleep(2)
+                reverse_direction = "backward" if direction == "forward" else "forward"
+                print(f"Invertendo para: {reverse_direction}")
+                set_motor(reverse_direction, 100)
+                time.sleep(2)
+                set_motor("stop", 0)
+                return True
+            # Se reed switch 2 ativar enquanto vai para frente, para imediatamente
+            if direction == "forward" and check_reed_switch_2():
+                print("Reed switch 2 ativado indo para frente - parando motor")
+                set_motor("stop", 0)
+                return True
+            set_motor(direction, 100)
+            time.sleep(0.1)
+        set_motor("stop", 0)
+        return True
+    except Exception as e:
+        print(f"Erro no motor_action: {e}")
+        set_motor("stop", 0)
+        return False
+
 def face_recognition():
     print("Iniciando reconhecimento facial.")
     cap = cv2.VideoCapture(0)
@@ -152,23 +200,15 @@ def face_recognition():
                     print("Reconhecido")
 
                     # Activate motor to unlock
-                    if set_motor("forward", 100):
-                        time.sleep(3)  # Run motor for 3 seconds
-                        set_motor("stop", 0)  # Stop motor
-                        print("Motor unlocked successfully.")
-
-                        # Wait for 20 seconds
+                    if motor_action("forward", 3):
+                        print("Motor acionado para destravar.")
                         time.sleep(15)
-
-                        # Activate motor to lock
-                        if set_motor("backward", 100):
-                            time.sleep(3)  # Run motor for 3 seconds
-                            set_motor("stop", 0)  # Stop motor
-                            print("Motor locked successfully.")
+                        if motor_action("backward", 3):
+                            print("Motor acionado para travar.")
                         else:
-                            print("Failed to lock motor.")
+                            print("Falha ao travar motor.")
                     else:
-                        print("Failed to unlock motor.")
+                        print("Falha ao destravar motor.")
                 else:
                     print("Desconhecido")
 
