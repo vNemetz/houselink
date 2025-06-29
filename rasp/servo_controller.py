@@ -13,7 +13,7 @@ PWM_PIN = 18  # GPIO18 (Physical Pin 12)
 IN1_PIN = 23  # GPIO23 (Physical Pin 16)
 IN2_PIN = 24  # GPIO24 (Physical Pin 18)    
 REED_PIN = 17  # GPIO17 for reed switch
-REED_PIN_2 = 27  # GPIO27 for second reed switch
+REED_PIN_2 = 5  # GPIO27 for second reed switch
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -69,7 +69,7 @@ def motor_action(direction: str, duration: int):
             if check_reed_switch():
                 logger.info("Reed switch 1 activated - stopping motor")
                 set_motor("stop", 0)
-                time.sleep(2)
+                time.sleep(15)
                 
                 reverse_direction = "backward" if direction == "forward" else "forward"
                 logger.info(f"Moving in reverse direction: {reverse_direction}")

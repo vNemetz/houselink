@@ -10,6 +10,6 @@ TARGET_DIR="/home/rasp/Facial-Recognition-in-Python/Recognition"
 ssh rasp@$RASPBERRY_PI_IP "mkdir -p $TARGET_DIR"
 
 # Copy recognition.py to Raspberry Pi
-scp /home/oficinas41/facial/recognition.py rasp@$RASPBERRY_PI_IP:$TARGET_DIR
+scp /home/felipereis/Documentos/houselink/facial/recognition.py rasp@$RASPBERRY_PI_IP:$TARGET_DIR
 
 echo "Deployment complete!"
