@@ -150,35 +150,38 @@ def check_reed_switch_2():
     return GPIO.input(REED_PIN_2) == 0
 
 def motor_action(direction: str, duration: int):
-    """
-    Move o motor na direção indicada, para e inverte se reed switch 1 ativar,
-    ou para imediatamente se reed switch 2 ativar enquanto estiver indo para frente.
-    """
+    """Run motor with reed switch monitoring and reverse movement"""
     try:
-        start_time = time.time()
-        while time.time() - start_time < duration:
-            # Se reed switch 1 ativar, para, espera 2s e inverte
+        while True:
+            # Check first reed switch
             if check_reed_switch():
-                print("Reed switch 1 ativado - parando motor")
+                print("Reed switch 1 activated - stopping motor")
                 set_motor("stop", 0)
-                time.sleep(2)
+                time.sleep(15)
+                
                 reverse_direction = "backward" if direction == "forward" else "forward"
-                print(f"Invertendo para: {reverse_direction}")
+                print(f"Moving in reverse direction: {reverse_direction}")
                 set_motor(reverse_direction, 100)
-                time.sleep(2)
+                # Motor will rotate until it finds the opposite reed switch
+                while not check_reed_switch_2():
+                    time.sleep(0.1)
                 set_motor("stop", 0)
-                return True
-            # Se reed switch 2 ativar enquanto vai para frente, para imediatamente
-            if direction == "forward" and check_reed_switch_2():
-                print("Reed switch 2 ativado indo para frente - parando motor")
+                break
+            
+            # Check second reed switch only when moving backward
+            if direction == "backward" and check_reed_switch_2():
+                print("Reed switch 2 activated while moving backward - stopping motor")
                 set_motor("stop", 0)
-                return True
+                break
+            
             set_motor(direction, 100)
             time.sleep(0.1)
+        
         set_motor("stop", 0)
         return True
+        
     except Exception as e:
-        print(f"Erro no motor_action: {e}")
+        print(f"Error in motor_action: {e}")
         set_motor("stop", 0)
         return False
 

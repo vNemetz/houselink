@@ -62,9 +62,8 @@ def set_motor(direction: str, speed: int):
 def motor_action(direction: str, duration: int):
     """Run motor with reed switch monitoring and reverse movement"""
     try:
-        start_time = time.time()
         
-        while time.time() - start_time < duration:
+        while True:
             # Check first reed switch
             if check_reed_switch():
                 logger.info("Reed switch 1 activated - stopping motor")
@@ -74,7 +73,9 @@ def motor_action(direction: str, duration: int):
                 reverse_direction = "backward" if direction == "forward" else "forward"
                 logger.info(f"Moving in reverse direction: {reverse_direction}")
                 set_motor(reverse_direction, 100)
-                time.sleep(2)
+                # Motor will rotate until it finds the opposite reed switch
+                while not check_reed_switch_2():
+                    time.sleep(0.1)
                 set_motor("stop", 0)
                 break
             
