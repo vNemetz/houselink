@@ -3,6 +3,7 @@ import os
 import numpy as np
 import RPi.GPIO as GPIO
 import time
+import threading
 
 # Force OpenCV to use headless mode
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -22,6 +23,20 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(PWM_PIN, GPIO.OUT)
 GPIO.setup(IN1_PIN, GPIO.OUT)
 GPIO.setup(IN2_PIN, GPIO.OUT)
+
+# GPIO setup for reed switches
+REED_PIN = 17  # GPIO17 para reed switch 1
+REED_PIN_2 = 5  # GPIO27 para reed switch 2
+
+GPIO.setup(REED_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(REED_PIN_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+# GPIO setup for buttons
+BUTTON_PIN_RECOGNITION = 26  # Botão para reconhecimento facial
+BUTTON_PIN_REGISTER = 16    # Botão para cadastro de rosto
+
+GPIO.setup(BUTTON_PIN_RECOGNITION, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(BUTTON_PIN_REGISTER, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # Create PWM instance for speed control
 pwm = GPIO.PWM(PWM_PIN, 100)  # 100Hz frequency
@@ -68,7 +83,7 @@ def load_training_data(data_folder):
 
 def capture_multiple_faces(num_samples=30):
     print(f"Capturando {num_samples} imagens. Posicione o rosto na câmera.")
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
     if not cap.isOpened():
         raise Exception("Erro: Não foi possível abrir a câmera.")
 
@@ -126,9 +141,53 @@ def set_motor(direction: str, speed: int):
         print(f"Error controlling motor: {e}")
         return False
 
+def check_reed_switch():
+    """Retorna True se o reed switch 1 está ativado (magneto presente)"""
+    return GPIO.input(REED_PIN) == 0
+
+def check_reed_switch_2():
+    """Retorna True se o reed switch 2 está ativado (magneto presente)"""
+    return GPIO.input(REED_PIN_2) == 0
+
+def motor_action(direction: str, duration: int):
+    """Run motor with reed switch monitoring and reverse movement"""
+    try:
+        while True:
+            # Check first reed switch
+            if check_reed_switch():
+                print("Reed switch 1 activated - stopping motor")
+                set_motor("stop", 0)
+                time.sleep(15)
+                
+                reverse_direction = "backward" if direction == "forward" else "forward"
+                print(f"Moving in reverse direction: {reverse_direction}")
+                set_motor(reverse_direction, 100)
+                # Motor will rotate until it finds the opposite reed switch
+                while not check_reed_switch_2():
+                    time.sleep(0.1)
+                set_motor("stop", 0)
+                break
+            
+            # Check second reed switch only when moving backward
+            if direction == "backward" and check_reed_switch_2():
+                print("Reed switch 2 activated while moving backward - stopping motor")
+                set_motor("stop", 0)
+                break
+            
+            set_motor(direction, 100)
+            time.sleep(0.1)
+        
+        set_motor("stop", 0)
+        return True
+        
+    except Exception as e:
+        print(f"Error in motor_action: {e}")
+        set_motor("stop", 0)
+        return False
+
 def face_recognition():
     print("Iniciando reconhecimento facial.")
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
     if not cap.isOpened():
         raise Exception("Erro: Não foi possível abrir a câmera.")
 
@@ -152,27 +211,35 @@ def face_recognition():
                     print("Reconhecido")
 
                     # Activate motor to unlock
-                    if set_motor("forward", 100):
-                        time.sleep(3)  # Run motor for 3 seconds
-                        set_motor("stop", 0)  # Stop motor
-                        print("Motor unlocked successfully.")
-
-                        # Wait for 20 seconds
-                        time.sleep(15)
-
-                        # Activate motor to lock
-                        if set_motor("backward", 100):
-                            time.sleep(3)  # Run motor for 3 seconds
-                            set_motor("stop", 0)  # Stop motor
-                            print("Motor locked successfully.")
+                    if motor_action("forward", 2):
+                        print("Motor acionado para destravar.")
+                        time.sleep(15)  # Cooldown period
+                        if motor_action("backward", 2):
+                            print("Motor acionado para travar automaticamente.")
+                            print("Retornando à seleção de modo.")
+                            return  # Return to mode selection after auto-lock
                         else:
-                            print("Failed to lock motor.")
+                            print("Falha ao travar motor automaticamente.")
                     else:
-                        print("Failed to unlock motor.")
+                        print("Falha ao destravar motor.")
                 else:
                     print("Desconhecido")
 
     cap.release()
+
+def wait_for_recognition_button():
+    print("Aguardando o botão de reconhecimento ser pressionado...")
+    while GPIO.input(BUTTON_PIN_RECOGNITION):
+        time.sleep(0.05)
+    print("Botão de reconhecimento pressionado!")
+    time.sleep(0.3)  # debounce
+
+def wait_for_register_button():
+    print("Aguardando o botão de cadastro ser pressionado...")
+    while GPIO.input(BUTTON_PIN_REGISTER):
+        time.sleep(0.05)
+    print("Botão de cadastro pressionado!")
+    time.sleep(0.3)  # debounce
 
 # Cleanup GPIO on program exit
 def cleanup():
@@ -185,27 +252,30 @@ def cleanup():
 # Treinar o modelo inicialmente
 train_model()
 
-# Menu via terminal
+# Initialize motor to stopped state
 try:
-    # Initialize motor to stopped state
     set_motor("stop", 0)
 except Exception as e:
     print(f"Error initializing motor: {e}")
 
-while True:
-    print("\n--- Menu ---")
-    print("1. Cadastrar novo rosto")
-    print("2. Iniciar reconhecimento facial")
-    print("3. Sair")
-    choice = input("Escolha uma opção (1/2/3): ")
-
-    if choice == '1':
-        capture_multiple_faces()
-    elif choice == '2':
+def reconhecimento_via_botao():
+    while True:
+        wait_for_recognition_button()
         face_recognition()
-    elif choice == '3':
-        print("Encerrando programa.")
-        cleanup()
-        break
-    else:
-        print("Opção inválida. Tente novamente.")
+
+def cadastro_via_botao():
+    while True:
+        wait_for_register_button()
+        capture_multiple_faces()
+
+# Inicie as duas threads dos botões antes do menu ou do loop principal
+threading.Thread(target=reconhecimento_via_botao, daemon=True).start()
+threading.Thread(target=cadastro_via_botao, daemon=True).start()
+
+# Agora, se quiser, pode remover o menu e deixar só o loop de espera ou só o cleanup:
+try:
+    while True:
+        time.sleep(1)  # Mantém o programa rodando
+except KeyboardInterrupt:
+    print("Encerrando programa.")
+    cleanup()
